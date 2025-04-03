@@ -1,9 +1,46 @@
-#game.py
-#Ava Heintzelman 
-#3/18/25 (updated 3/31/25)
+# game.py
+# Ava Heintzelman 
+# 3/18/25 (updated 3/31/25, changes made for Assignment 11 on 4/03/25)
 
 import random
+import json
 import gamefunctions
+
+def save_game(player_hp, player_gold, inventory, equipped_weapon, filename="savegame.json"):
+    """
+    Saves the current game state to a JSON file.
+    
+    Parameters:
+        player_hp (int): The player's current HP.
+        player_gold (int): The player's current gold.
+        inventory (list): The player's inventory.
+        equipped_weapon (dict or None): The currently equipped weapon.
+        filename (str): The file to which the game state is saved.
+    """
+    data = {
+        "player_hp": player_hp,
+        "player_gold": player_gold,
+        "inventory": inventory,
+        "equipped_weapon": equipped_weapon
+    }
+    with open(filename, "w") as f:
+        json.dump(data, f)
+    print(f"Game saved to {filename}.")
+
+def load_game(filename="savegame.json"):
+    """
+    Loads the game state from a JSON file.
+    
+    Parameters:
+        filename (str): The file from which to load the game state.
+    
+    Returns:
+        tuple: (player_hp, player_gold, inventory, equipped_weapon)
+    """
+    with open(filename, "r") as f:
+        data = json.load(f)
+    print(f"Game loaded from {filename}.")
+    return data["player_hp"], data["player_gold"], data["inventory"], data["equipped_weapon"]
 
 def shop(player_gold, inventory):
     """
@@ -157,16 +194,31 @@ def main():
     """
     Main function for the game.
     Manages the game loop, which includes options to fight monsters,
-    sleep to restore HP, visit the shop to purchase items, equip weapons, or quit.
+    sleep to restore HP, visit the shop to purchase items, equip weapons,
+    save the game, or quit.
     """
+    print("Welcome to the Adventure Game!")
+    start_choice = input("Press 'N' to start a New Game or 'L' to Load a saved game: ").strip().upper()
+    if start_choice == 'L':
+        filename = input("Enter the filename to load (default: savegame.json): ").strip()
+        if not filename:
+            filename = "savegame.json"
+        try:
+            player_hp, player_gold, inventory, equipped_weapon = load_game(filename)
+        except FileNotFoundError:
+            print("Save file not found. Starting a new game.")
+            player_hp = 30
+            player_gold = 10
+            inventory = []
+            equipped_weapon = None
+    else:
+        player_hp = 30
+        player_gold = 10
+        inventory = []
+        equipped_weapon = None
+
     name = input("Enter your name: ")
     gamefunctions.print_welcome(name)
-    
-    # Initialize player stats and inventory.
-    player_hp = 30
-    player_gold = 10
-    inventory = []
-    equipped_weapon = None
 
     while True:
         print("\nYou are in town.")
@@ -176,14 +228,20 @@ def main():
         print("2) Sleep (Restore HP for 5 Gold)")
         print("3) Visit Shop")
         print("4) Equip Weapon")
-        print("5) Quit")
+        print("5) Save and Quit")
+        print("6) Quit without saving")
         
         choice = input("Enter your choice: ")
-        if choice not in ['1', '2', '3', '4', '5']:
+        if choice not in ['1', '2', '3', '4', '5', '6']:
             print("Invalid choice. Please try again.")
             continue
         
+        if choice == '6':
+            print("Thanks for playing!")
+            break
+        
         if choice == '5':
+            save_game(player_hp, player_gold, inventory, equipped_weapon)
             print("Thanks for playing!")
             break
         
