@@ -1,7 +1,8 @@
 # game.py
-# Ava Heintzelman 
-# Updated 4/14/25 for Assignment 13 with WanderingMonster implementation
+# Ava Heintzelman
+# Updated 4/24/25 for Assignment 14: Game Resources
 
+import os
 import random, json, pygame
 import gamefunctions
 from wanderingMonster import WanderingMonster
@@ -11,7 +12,9 @@ monsters = []
 # Global placeholder for a collided monster during map movement
 collided_monster = None
 
-def save_game(player_hp, player_gold, inventory, equipped_weapon, player_map_pos, filename="savegame.json"):
+
+def save_game(player_hp, player_gold, inventory, equipped_weapon, player_map_pos,
+              filename="savegame.json"):
     data = {
         "player_hp": player_hp,
         "player_gold": player_gold,
@@ -24,17 +27,21 @@ def save_game(player_hp, player_gold, inventory, equipped_weapon, player_map_pos
         json.dump(data, f)
     print(f"Game saved to {filename}.")
 
+
 def load_game(filename="savegame.json"):
     with open(filename, "r") as f:
         data = json.load(f)
-    print(f"Game loaded from {filename}.")
+    print("Game loaded from {filename}.")
     return (data["player_hp"], data["player_gold"], data["inventory"],
             data["equipped_weapon"], tuple(data["player_map_pos"]))
 
+
 def shop(player_gold, inventory):
     items = [
-        {"name": "Sword", "type": "weapon", "price": 10, "maxDurability": 40, "currentDurability": 40, "damage_bonus": 5},
-        {"name": "Magic Scroll", "type": "special", "price": 15, "description": "Instantly defeats a monster"}
+        {"name": "Sword", "type": "weapon", "price": 10,
+         "maxDurability": 40, "currentDurability": 40, "damage_bonus": 5},
+        {"name": "Magic Scroll", "type": "special", "price": 15,
+         "description": "Instantly defeats a monster"}
     ]
     print("\nShop Menu:")
     for i, item in enumerate(items, start=1):
@@ -52,6 +59,7 @@ def shop(player_gold, inventory):
     print(f"You purchased a {selected['name']}!")
     return player_gold, inventory
 
+
 def equip_weapon(inventory):
     weapons = [item for item in inventory if item.get("type") == "weapon"]
     if not weapons:
@@ -59,7 +67,8 @@ def equip_weapon(inventory):
         return None
     print("\nAvailable Weapons:")
     for i, w in enumerate(weapons, start=1):
-        print(f"{i}) {w['name']} (Damage Bonus: {w.get('damage_bonus',0)}, Durability: {w['currentDurability']}/{w['maxDurability']})")
+        print(f"{i}) {w['name']} (Damage Bonus: {w.get('damage_bonus',0)}, "
+              f"Durability: {w['currentDurability']}/{w['maxDurability']})")
     choice = input("Select a weapon (or '0' to cancel): ")
     if choice == '0':
         print("No weapon equipped.")
@@ -74,6 +83,7 @@ def equip_weapon(inventory):
         return None
     print(f"{weapons[idx]['name']} is now equipped.")
     return weapons[idx]
+
 
 def fight_monster(player_hp, player_gold, inventory, equipped_weapon, monster=None):
     """
@@ -132,17 +142,31 @@ def fight_monster(player_hp, player_gold, inventory, equipped_weapon, monster=No
             break
     return player_hp, player_gold, equipped_weapon, inventory
 
+
 def run_map(player_pos):
     """
     Runs the map interface where the player can move.
     Monster objects are drawn on the grid and move every other player move.
-    A collision (player occupying the same square as a monster) triggers combat.
+    A collision triggers combat.
     """
     global monsters, collided_monster
     pygame.init()
     screen = pygame.display.set_mode((320,320))
     pygame.display.set_caption("Map")
     clock = pygame.time.Clock()
+
+    # Load images with exception handling
+    try:
+        player_img = pygame.image.load("player.png").convert_alpha()
+    except (pygame.error, FileNotFoundError):
+        print("Warning: 'player.png' not found. Using fallback shape.")
+        player_img = None
+    try:
+        monster_img = pygame.image.load("monster.png").convert_alpha()
+    except (pygame.error, FileNotFoundError):
+        print("Warning: 'monster.png' not found. Using fallback shape.")
+        monster_img = None
+
     town_pos = (0, 0)
     left_town, event_triggered = False, None
     MOVE = {pygame.K_UP:(0,-1), pygame.K_DOWN:(0,1), pygame.K_LEFT:(-1,0), pygame.K_RIGHT:(1,0)}
@@ -150,7 +174,6 @@ def run_map(player_pos):
 
     # Initialize monsters if none exist
     if not monsters:
-        # Ensure monsters don't spawn on the player's current position or in town
         m1 = WanderingMonster.new_random_monster(exclude_positions=[player_pos, town_pos])
         m2 = WanderingMonster.new_random_monster(exclude_positions=[player_pos, town_pos, m1.position])
         monsters.extend([m1, m2])
@@ -167,7 +190,6 @@ def run_map(player_pos):
                 if 0 <= new_pos[0] < 10 and 0 <= new_pos[1] < 10:
                     player_pos = new_pos
                     move_count += 1
-                    # Every other player move, let the monsters move
                     if move_count % 2 == 0:
                         for m in monsters:
                             m_dx, m_dy = random.choice(list(MOVE.values()))
@@ -175,7 +197,6 @@ def run_map(player_pos):
         left_town = left_town or (player_pos != town_pos)
         if left_town and player_pos == town_pos:
             event_triggered, running = "town", False
-        # Check for collision with any monster
         for m in monsters:
             if m.position == player_pos:
                 collided_monster = m
@@ -183,26 +204,40 @@ def run_map(player_pos):
                 break
 
         screen.fill((255, 255, 255))
-        # Draw grid lines
-        for x in range(0, 321, 32):
-            pygame.draw.line(screen, (0,0,0), (x, 0), (x, 320))
-        for y in range(0, 321, 32):
-            pygame.draw.line(screen, (0,0,0), (0, y), (320, y))
-        # Draw the town (green circle)
+        # Draw grid
+        for x in range(0, 321, 32): pygame.draw.line(screen, (0,0,0), (x, 0), (x, 320))
+        for y in range(0, 321, 32): pygame.draw.line(screen, (0,0,0), (0, y), (320, y))
+
+        # Draw town
         pygame.draw.circle(screen, (0,255,0), (16,16), 10)
-        # Draw monsters with their individual colors
+
+        # Draw monsters
         for m in monsters:
-            pygame.draw.circle(screen, m.color, (m.position[0]*32+16, m.position[1]*32+16), 10)
-        # Draw the player (blue rectangle)
-        pygame.draw.rect(screen, (0,0,255), pygame.Rect(player_pos[0]*32, player_pos[1]*32, 32, 32))
+            px, py = m.position[0]*32, m.position[1]*32
+            if monster_img:
+                rect = monster_img.get_rect(topleft=(px, py))
+                screen.blit(monster_img, rect)
+            else:
+                pygame.draw.rect(screen, (255,0,0), pygame.Rect(px, py, 32, 32))
+
+        # Draw player
+        px, py = player_pos[0]*32, player_pos[1]*32
+        if player_img:
+            rect = player_img.get_rect(topleft=(px, py))
+            screen.blit(player_img, rect)
+        else:
+            pygame.draw.rect(screen, (0,0,255), pygame.Rect(px, py, 32, 32))
+
         pygame.display.flip()
         clock.tick(10)
+
     pygame.quit()
     return player_pos, event_triggered
 
+
 def main():
     global monsters, collided_monster
-    print("Welcome to the Adventure Game!")
+    print("Welcome to the Adventure Game with Resources!")
     start = input("Press 'N' for New Game or 'L' to Load a game: ").strip().upper()
     if start == 'L':
         fname = input("Enter filename (default: savegame.json): ").strip() or "savegame.json"
@@ -213,10 +248,10 @@ def main():
             player_hp, player_gold, inventory, equipped_weapon, player_map_pos = 30, 10, [], None, (0, 0)
     else:
         player_hp, player_gold, inventory, equipped_weapon, player_map_pos = 30, 10, [], None, (0, 0)
-    
+
     name = input("Enter your name: ")
     gamefunctions.print_welcome(name)
-    
+
     while True:
         print(f"\nIn town. HP: {player_hp}, Gold: {player_gold}")
         print("1) Leave town (Map)\n2) Sleep (Restore HP for 5 Gold)\n3) Visit Shop\n4) Equip Weapon\n5) Save & Quit\n6) Quit without saving")
@@ -251,19 +286,17 @@ def main():
                 print("Returned to town.")
             elif event == "monster":
                 print("Encountered a monster!")
-                # Trigger combat with the collided monster from the map
                 player_hp, player_gold, equipped_weapon, inventory = fight_monster(
                     player_hp, player_gold, inventory, equipped_weapon, collided_monster)
-                # Remove the defeated monster from the global list
                 if collided_monster and collided_monster.hp <= 0:
                     monsters.remove(collided_monster)
                     collided_monster = None
-                # Reset player position after combat (if desired)
                 player_map_pos = (5, 5)
                 if player_hp <= 0:
                     break
 
     print("Game session ended.")
+
 
 if __name__ == "__main__":
     main()
